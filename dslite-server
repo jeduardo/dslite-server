@@ -29,11 +29,11 @@ get_ipv6() {
     host "$1" | grep -i ipv6 | rev | cut -d ' '  -f 1 | rev
 }
 
-LOCAL_IP=$(get_ipv6 "$LOCAL_HOST")
-REMOTE_IP=$(get_ipv6 "$REMOTE_HOST")
+LOCAL_ADDR=$(get_ipv6 "$LOCAL_HOST")
+REMOTE_ADDR=$(get_ipv6 "$REMOTE_HOST")
 
-echo "IP for $LOCAL_HOST is $LOCAL_IP"
-echo "IP for $REMOTE_HOST is $REMOTE_IP"
+echo "IP for $LOCAL_HOST is $LOCAL_ADDR"
+echo "IP for $REMOTE_HOST is $REMOTE_ADDR"
 echo "WAN interface is $WAN_IFACE, tunnel interface is $TUN_IFACE"
 
 iptables_rule() {
@@ -53,11 +53,11 @@ iptables_rule() {
     #eval iptables "$action" FORWARD -o "$TUN_INET" -p tcp -m tcp --tcp-flags SYN,RST SYN -m tcpmss --mss "$(($MSS + 1)):65535" -j TCPMSS --set-mss "$MSS"
     #eval iptables -t nat "$action" PREROUTING -i "$TUN_INET" -p tcp -m tcp --tcp-flags SYN,ACK SYN,ACK -m tcpmss --mss "$(($MSS + 1)):65535" -j TCPMSS --set-mss "$MSS"
     # Allowing receiving packets from the public endpoint
-    eval ip6tables "$action" INPUT -s "$REMOTE_IP" -j ACCEPT $rule_suffix
+    eval ip6tables "$action" INPUT -s "$REMOTE_ADDR" -j ACCEPT $rule_suffix
 }
 
 start_tunnel() {
-    ip -6 tun add "$TUN_IFACE" mode ipip6 local "$LOCAL_IP" remote "$REMOTE_IP"
+    ip -6 tun add "$TUN_IFACE" mode ipip6 local "$LOCAL_ADDR" remote "$REMOTE_ADDR"
     ip link set dev "$TUN_IFACE" up
     #ip link set dev "$TUN_IFACE" mtu $MTU
     ip a add "$TUN_IP4" dev "$TUN_IFACE"
