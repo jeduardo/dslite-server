@@ -12,7 +12,7 @@ chmod a+x ./dslite-server
 
 ## Configuration
 
-The script reads its configuration from `/etc/default/dslite`. Inside this file, both the `LOCAL_HOST`, which will resolve to the machine's public IP, and the `REMOTE_HOST`, which will be resolve to the remote client's public IP, need to be specified. This is necessary as the AFTR tunnel needs to have the IPs for both the local and the remote host.
+The script reads its configuration from `/etc/default/dslite`. Inside this file, both the `LOCAL_HOST`, which will resolve to the machine's public IP, and the `REMOTE_HOST`, which will be resolve to the remote client's public IP, need to be specified. This is necessary as the AFTR tunnel needs to have the IPs for both the local and the remote host. You can override the remote lookup by setting a value to `REMOTE_ADDR`.
 
 By the RFC, the server will always have the IP `192.0.0.1` and the network will always be `192.0.0.0/29`. These are the values used by default, but they can be changed by tweaking the values at `TUN_IP4` and `TUN_NET`.
 

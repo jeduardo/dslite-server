@@ -30,7 +30,9 @@ get_ipv6() {
 }
 
 LOCAL_ADDR=$(get_ipv6 "$LOCAL_HOST")
-REMOTE_ADDR=$(get_ipv6 "$REMOTE_HOST")
+
+# Only perform REMOTE_ADDR lookup if not set in the configuration file
+REMOTE_ADDR="${REMOTE_ADDR:-$(get_ipv6 "$REMOTE_HOST")}"
 
 echo "IP for $LOCAL_HOST is $LOCAL_ADDR"
 echo "IP for $REMOTE_HOST is $REMOTE_ADDR"
