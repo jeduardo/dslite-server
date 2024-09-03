@@ -1,0 +1,89 @@
+#!/bin/bash
+
+set -o nounset  # Exit if trying to use an uninitialized variable
+set -o errexit  # Exit on any command failure
+
+# Source the configuration file
+CONFIG_FILE="/etc/default/dslite-server"
+if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+else
+    echo "Configuration file $CONFIG_FILE not found. Exiting."
+    exit 1
+fi
+
+# Apply default values if variables are empty
+LOCAL_HOST="${LOCAL_HOST:-aftr.example}"
+REMOTE_HOST="${REMOTE_HOST:-remote.example}"
+TUN_IP4="${TUN_IP4:-192.0.0.1/29}"
+TUN_NET="${TUN_NET:-192.0.0.0/29}"
+TUN_IFACE="${TUN_IFACE:-ip6tun0}"
+WAN_IFACE="${WAN_IFACE:-eth0}"
+# Using same MTU as OpenWrt
+MTU="${MTU:-1280}"
+
+# MSS is MTU - IP Header size - TCP header size
+MSS=$(($MTU - 20 - 20))
+
+get_ipv6() {
+    host "$1" | grep -i ipv6 | rev | cut -d ' '  -f 1 | rev
+}
+
+LOCAL_IP=$(get_ipv6 "$LOCAL_HOST")
+REMOTE_IP=$(get_ipv6 "$REMOTE_HOST")
+
+echo "IP for $LOCAL_HOST is $LOCAL_IP"
+echo "IP for $REMOTE_HOST is $REMOTE_IP"
+echo "WAN interface is $WAN_IFACE, tunnel interface is $TUN_IFACE"
+
+iptables_rule() {
+    local action="$1"
+    local rule_suffix="$2"
+
+    # Allowing NAT
+    eval iptables -t nat "$action" POSTROUTING ! -d "$TUN_NET" -o "$WAN_IFACE" -j MASQUERADE $rule_suffix
+    # Allowing forwarding between interfaces
+    eval iptables "$action" FORWARD -i "$TUN_IFACE" -o "$WAN_IFACE" -j ACCEPT $rule_suffix
+    eval iptables "$action" FORWARD -i "$WAN_IFACE" -o "$TUN_IFACE" -m state --state ESTABLISHED,RELATED -j ACCEPT $rule_suffix
+    eval iptables "$action" FORWARD -i "$WAN_IFACE" -o "$WAN_IFACE" -d "$TUN_NET" -j ACCEPT $rule_suffix
+    # Allowing inbound traffic
+    eval iptables "$action" INPUT -i lo -s "$TUN_NET" -d "$TUN_NET" -j ACCEPT $rule_suffix
+    eval iptables "$action" INPUT -i "$TUN_IFACE" -s "$TUN_NET" -d "$TUN_NET" -j ACCEPT $rule_suffix
+    # Applying clamping
+    #eval iptables "$action" FORWARD -o "$TUN_INET" -p tcp -m tcp --tcp-flags SYN,RST SYN -m tcpmss --mss "$(($MSS + 1)):65535" -j TCPMSS --set-mss "$MSS"
+    #eval iptables -t nat "$action" PREROUTING -i "$TUN_INET" -p tcp -m tcp --tcp-flags SYN,ACK SYN,ACK -m tcpmss --mss "$(($MSS + 1)):65535" -j TCPMSS --set-mss "$MSS"
+    # Allowing receiving packets from the public endpoint
+    eval ip6tables "$action" INPUT -s "$REMOTE_IP" -j ACCEPT $rule_suffix
+}
+
+start_tunnel() {
+    ip -6 tun add "$TUN_IFACE" mode ipip6 local "$LOCAL_IP" remote "$REMOTE_IP"
+    ip link set dev "$TUN_IFACE" up
+    #ip link set dev "$TUN_IFACE" mtu $MTU
+    ip a add "$TUN_IP4" dev "$TUN_IFACE"
+
+    iptables_rule "-I" ""
+
+    echo "ds-lite server is up"
+}
+
+stop_tunnel() {
+    ip link del "$TUN_IFACE" || true
+    iptables_rule "-D" "|| true"
+    rmmod ip6_tunnel || true
+
+    echo "ds-lite server is down"
+}
+
+case "$1" in
+    start)
+        start_tunnel
+        ;;
+    stop)
+        stop_tunnel
+        ;;
+    *)
+        echo "Usage: $0 {start|stop}"
+        exit 1
+        ;;
+esac
