@@ -17,7 +17,7 @@ LOCAL_HOST="${LOCAL_HOST:-aftr.example}"
 REMOTE_HOST="${REMOTE_HOST:-remote.example}"
 TUN_IP4="${TUN_IP4:-192.0.0.1/29}"
 TUN_NET="${TUN_NET:-192.0.0.0/29}"
-TUN_IFACE="${TUN_IFACE:-ip6tun0}"
+TUN_IFACE="${TUN_IFACE:-ip4tun0}"
 WAN_IFACE="${WAN_IFACE:-eth0}"
 # Using same MTU as OpenWrt
 MTU="${MTU:-1280}"

@@ -27,7 +27,7 @@ This is a sample of a default `/etc/default/dslite-server` configuration tweakin
 ```shell
 LOCAL_HOST=aftr.myservers.example
 REMOTE_HOST=home.myservers.example
-TUN_IFACE=ip6tun0
+TUN_IFACE=ip4tun0
 WAN_IFACE=ens5
 ```
 
